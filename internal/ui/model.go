@@ -10,16 +10,18 @@ import (
 type tickMsg time.Time
 
 type Model struct {
-	engine    *sim.Engine
-	width     int
-	height    int
-	camera    sim.Point
-	cursor    sim.Point
-	paused    bool
-	speed     int
-	showHelp  bool
-	lastCycle int
-	selected  int
+	engine       *sim.Engine
+	width        int
+	height       int
+	camera       sim.Point
+	cursor       sim.Point
+	paused       bool
+	speed        int
+	showHelp     bool
+	lastCycle    int
+	selected     int
+	inspectorTab int
+	debug        bool
 }
 
 func New(engine *sim.Engine) Model {
@@ -84,6 +86,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.speed = 8
 		case "enter", "i":
 			m.toggleSelection()
+		case "c":
+			m.inspectorTab = (m.inspectorTab + 1) % 2
+		case "v":
+			m.debug = !m.debug
 		case "w", "k", "up":
 			m.moveCursor(0, -1)
 		case "s", "j", "down":
