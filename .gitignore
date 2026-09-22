@@ -1,0 +1,18 @@
+# Build outputs
+/tui_go
+/tui_go.exe
+/bin/
+/dist/
+
+# Test and profiling artifacts
+*.test
+*.out
+*.prof
+coverage.*
+
+# Editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
