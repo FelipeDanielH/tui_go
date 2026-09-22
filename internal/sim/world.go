@@ -8,17 +8,21 @@ import (
 )
 
 type Engine struct {
-	Config   Config
-	Seed     int64
-	Tick     int64
-	Metrics  Metrics
-	terrain  []Terrain
-	entities map[int]*Entity
-	order    []int
-	spatial  map[Point][]int
-	nextID   int
-	rng      *rand.Rand
-	events   []string
+	Config    Config
+	Seed      int64
+	Tick      int64
+	Metrics   Metrics
+	terrain   []Terrain
+	entities  map[int]*Entity
+	order     []int
+	spatial   map[Point][]int
+	nextID    int
+	rng       *rand.Rand
+	events    []string
+	pathSeen  []int
+	pathPrev  []int
+	pathMark  int
+	pathQueue []int
 }
 
 func New(seed int64, cfg Config) *Engine {
@@ -32,6 +36,7 @@ func New(seed int64, cfg Config) *Engine {
 		Config: cfg, Seed: seed, terrain: make([]Terrain, cfg.Width*cfg.Height),
 		entities: make(map[int]*Entity), spatial: make(map[Point][]int),
 		nextID: 1, rng: rand.New(rand.NewSource(seed)),
+		pathSeen: make([]int, cfg.Width*cfg.Height), pathPrev: make([]int, cfg.Width*cfg.Height),
 	}
 	e.generateTerrain()
 	for i := 0; i < cfg.InitialPlants; i++ {
@@ -135,11 +140,13 @@ func (e *Engine) AddEntity(k Kind, p Point) *Entity {
 	case Rabbit:
 		ent.Needs.Hunger = 10 + e.rng.Float64()*25
 		ent.Needs.Thirst = 10 + e.rng.Float64()*20
-		ent.Traits = Traits{Size: 1, Perception: 9, Speed: 1, Reach: 1}
+		ent.Traits = Traits{Size: 1, Perception: 9, Speed: 2, Reach: 1}
+		ent.Mind.Personality = e.newPersonality()
 	case Wolf:
 		ent.Needs.Hunger = 15 + e.rng.Float64()*20
 		ent.Needs.Thirst = 10 + e.rng.Float64()*20
-		ent.Traits = Traits{Size: 1.7, Perception: 12, Speed: 1, Reach: 1}
+		ent.Traits = Traits{Size: 1.7, Perception: 12, Speed: 2, Reach: 1}
+		ent.Mind.Personality = e.newPersonality()
 	}
 	e.nextID++
 	e.entities[ent.ID] = ent
@@ -203,8 +210,9 @@ func (e *Engine) StateDigest() string {
 		if ent == nil || !ent.Alive {
 			continue
 		}
-		fmt.Fprintf(&b, "%d:%d:%d,%d:%d:%d:%d:%d|", ent.ID, ent.Kind, ent.Pos.X, ent.Pos.Y, ent.Age,
-			int(ent.Needs.Health*10), int(ent.Needs.Hunger*10), int(ent.Needs.Thirst*10))
+		fmt.Fprintf(&b, "%d:%d:%d,%d:%d:%d:%d:%d:%d:%d:%d:%d|", ent.ID, ent.Kind, ent.Pos.X, ent.Pos.Y, ent.Age,
+			int(ent.Needs.Health*10), int(ent.Needs.Hunger*10), int(ent.Needs.Thirst*10),
+			int(ent.Mind.Personality.Boldness*100), int(ent.Mind.Personality.Curiosity*100), int(ent.Mind.Goal.Kind), len(ent.Mind.Memory.Entries))
 	}
 	return b.String()
 }

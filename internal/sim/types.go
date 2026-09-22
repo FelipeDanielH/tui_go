@@ -71,6 +71,35 @@ func (a Action) String() string {
 	return [...]string{"IDLE", "EXPLORE", "SEEK FOOD", "EAT", "SEEK WATER", "DRINK", "REST", "FLEE", "HUNT"}[a]
 }
 
+type GoalKind uint8
+
+const (
+	GoalNone GoalKind = iota
+	GoalExplore
+	GoalFood
+	GoalWater
+	GoalFlee
+	GoalHunt
+	GoalRest
+)
+
+func (g GoalKind) String() string {
+	return [...]string{"NONE", "EXPLORE", "FIND FOOD", "FIND WATER", "FLEE", "HUNT", "REST"}[g]
+}
+
+type MemoryKind uint8
+
+const (
+	MemoryWater MemoryKind = iota
+	MemoryFood
+	MemoryPrey
+	MemoryDanger
+)
+
+func (k MemoryKind) String() string {
+	return [...]string{"water", "food", "prey", "danger"}[k]
+}
+
 type Needs struct {
 	Health float64
 	Hunger float64
@@ -85,6 +114,66 @@ type Traits struct {
 	Reach      int
 }
 
+// Personality provides small, seeded behavioral variation around the same
+// ecological rules. It is not inherited in this iteration.
+type Personality struct {
+	Boldness    float64
+	Curiosity   float64
+	Caution     float64
+	Persistence float64
+}
+
+type MemoryEntry struct {
+	Kind       MemoryKind
+	Position   Point
+	EntityID   int
+	ObservedAt int64
+	Confidence float64
+}
+
+type Memory struct {
+	Entries []MemoryEntry
+	Visits  []Point
+}
+
+type Goal struct {
+	Kind        GoalKind
+	Destination Point
+	TargetID    int
+	SetAt       int64
+	LastSeen    int64
+}
+
+type Navigation struct {
+	Path        []Point
+	Next        int
+	Destination Point
+	PlannedAt   int64
+	Failures    int
+	MoveBank    int
+}
+
+type UtilityScore struct {
+	Action  Action
+	Utility float64
+}
+
+type PerceptionSummary struct {
+	FoodDistance   int
+	WaterDistance  int
+	DangerDistance int
+	PreyDistance   int
+}
+
+type Cognition struct {
+	Personality Personality
+	Memory      Memory
+	Goal        Goal
+	Navigation  Navigation
+	Utilities   []UtilityScore
+	Perception  PerceptionSummary
+}
+
 type Entity struct {
 	ID       int
 	Kind     Kind
@@ -97,6 +186,7 @@ type Entity struct {
 	Target   Point
 	Cooldown int
 	Alive    bool
+	Mind     Cognition
 }
 
 func (e *Entity) Animal() bool { return e.Kind == Rabbit || e.Kind == Wolf }
@@ -143,4 +233,5 @@ type Decision struct {
 	Target   Point
 	TargetID int
 	Utility  float64
+	Goal     GoalKind
 }

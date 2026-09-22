@@ -15,7 +15,9 @@ func (e *Engine) Step() {
 		if !actor.Alive {
 			continue
 		}
+		e.ageMemories(actor)
 		perception := e.Perceive(actor)
+		e.observe(actor, perception)
 		decision := e.ChooseAction(actor, perception)
 		e.execute(actor, decision)
 		e.tryReproduce(actor, false)
