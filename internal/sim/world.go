@@ -213,6 +213,14 @@ func (e *Engine) StateDigest() string {
 		fmt.Fprintf(&b, "%d:%d:%d,%d:%d:%d:%d:%d:%d:%d:%d:%d|", ent.ID, ent.Kind, ent.Pos.X, ent.Pos.Y, ent.Age,
 			int(ent.Needs.Health*10), int(ent.Needs.Hunger*10), int(ent.Needs.Thirst*10),
 			int(ent.Mind.Personality.Boldness*100), int(ent.Mind.Personality.Curiosity*100), int(ent.Mind.Goal.Kind), len(ent.Mind.Memory.Entries))
+		for _, memory := range ent.Mind.Memory.Entries {
+			fmt.Fprintf(&b, "m%d:%d,%d:%d:%d:%d|", memory.Kind, memory.Position.X, memory.Position.Y, memory.EntityID, memory.ObservedAt, int(memory.Confidence*100))
+		}
+		nav := ent.Mind.Navigation
+		fmt.Fprintf(&b, "n%d,%d:%d:%d|", nav.Destination.X, nav.Destination.Y, nav.Next, len(nav.Path))
+		for _, point := range nav.Path {
+			fmt.Fprintf(&b, "p%d,%d|", point.X, point.Y)
+		}
 	}
 	return b.String()
 }
