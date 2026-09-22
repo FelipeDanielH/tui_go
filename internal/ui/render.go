@@ -26,6 +26,8 @@ func (m Model) View() tea.View {
 	var content string
 	if m.showHelp {
 		content = m.renderHelp()
+	} else if m.showEco {
+		content = m.renderEco()
 	} else {
 		content = m.renderGame()
 	}
@@ -49,7 +51,7 @@ func (m Model) renderGame() string {
 	if m.width >= 88 {
 		world = lipgloss.JoinHorizontal(lipgloss.Top, world, m.renderInspector(30))
 	}
-	footer := mutedStyle.Render(fitPlain(" move WASD/HJKL  enter inspect  tab next  C mind  V debug  space pause  ? help  q quit", m.width))
+	footer := mutedStyle.Render(fitPlain(" move WASD/HJKL  enter inspect  tab next  C mind  V debug  E eco  ? help  q quit", m.width))
 	return header + "\n" + world + "\n" + footer
 }
 
@@ -183,6 +185,9 @@ func (m Model) renderMindInspector(width int, ent *sim.Entity) string {
 	goal := ent.Mind.Goal
 	lines := []string{"", accentStyle.Render(" MIND · C TO SUMMARY"), mutedStyle.Render(fmt.Sprintf(" %s #%d · V debug:%t", ent.Kind, ent.ID, m.debug)), ""}
 	lines = append(lines,
+		fmt.Sprintf(" Gen     %d · parents %d/%d", ent.Biology.Generation, ent.Biology.ParentA, ent.Biology.ParentB),
+		fmt.Sprintf(" Bio     size %.2f speed %.2f", ent.Biology.Genome.Size, ent.Biology.Genome.Speed),
+		fmt.Sprintf("         sense %.2f fert %.2f", ent.Biology.Genome.Perception, ent.Biology.Genome.Fertility),
 		fmt.Sprintf(" Goal    %s", goal.Kind),
 		fmt.Sprintf(" Dest    %s", goal.Destination),
 		fmt.Sprintf(" Route   %d steps · %d replans", maxInt(0, len(nav.Path)-nav.Next), nav.Failures),
@@ -228,6 +233,7 @@ func (m Model) renderHelp() string {
 		"Tab                    Jump to the next animal",
 		"C                      Toggle summary/mind inspector",
 		"V                      Toggle selected animal debug overlay",
+		"E                      Toggle ecology/population view",
 		"Space                  Pause or resume simulation",
 		"+ / -                  Double or halve simulation speed",
 		"1 2 3 4                Set speed to ×1, ×2, ×4, ×8",
@@ -247,6 +253,50 @@ func (m Model) renderHelp() string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (m Model) renderEco() string {
+	history := m.engine.PopulationHistory()
+	lines := []string{accentStyle.Render(" TUI GO · ECOLOGY"), "", fmt.Sprintf(" tick %d · seed %d · samples %d/64", m.engine.Tick, m.engine.Seed, len(history)), ""}
+	lines = append(lines, ecologyLine("Plants", m.engine.Population(sim.Plant), history, func(s sim.PopulationSample) int { return s.Plants }))
+	lines = append(lines, ecologyLine("Rabbits", m.engine.Population(sim.Rabbit), history, func(s sim.PopulationSample) int { return s.Rabbits }))
+	lines = append(lines, ecologyLine("Wolves", m.engine.Population(sim.Wolf), history, func(s sim.PopulationSample) int { return s.Wolves }))
+	lines = append(lines, "", fmt.Sprintf(" Births %d · deaths %d · hunts %d", m.engine.Metrics.Births, m.engine.Metrics.Deaths, m.engine.Metrics.Hunts))
+	if len(history) > 0 {
+		last := history[len(history)-1]
+		lines = append(lines, fmt.Sprintf(" Max generation · rabbits %d · wolves %d", last.RabbitGeneration, last.WolfGeneration))
+	}
+	lines = append(lines, "", mutedStyle.Render(" E return to world · space pause · +/- speed · q quit"))
+	for i := range lines {
+		lines[i] = fitLine(lines[i], maxInt(20, m.width-2))
+	}
+	return strings.Join(lines, "\n")
+}
+
+func ecologyLine(name string, current int, samples []sim.PopulationSample, pick func(sim.PopulationSample) int) string {
+	values := make([]int, 0, len(samples))
+	for _, s := range samples {
+		values = append(values, pick(s))
+	}
+	return fmt.Sprintf(" %-8s %4d  %s", name, current, sparkline(values))
+}
+
+func sparkline(values []int) string {
+	if len(values) == 0 {
+		return "(warming up)"
+	}
+	glyphs := []rune("▁▂▃▄▅▆▇█")
+	max := 1
+	for _, v := range values {
+		if v > max {
+			max = v
+		}
+	}
+	var b strings.Builder
+	for _, v := range values {
+		b.WriteRune(glyphs[v*7/max])
+	}
+	return b.String()
 }
 
 func bar(value float64, width int) string {

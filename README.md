@@ -2,7 +2,7 @@
 
 TUI Go es un terrario autónomo y observable que vive por completo en la terminal. Plantas, conejos y lobos perciben su entorno local, satisfacen necesidades, se alimentan, huyen, cazan, se reproducen y mueren sin requerir acciones del jugador.
 
-Esta es la **iteración 2**: el vertical slice incorpora cognición limitada, navegación y explicabilidad sin convertir la interfaz en el motor del juego.
+Esta es la **iteración 3**: incorpora cognición limitada, navegación, herencia biológica y una historia poblacional acotada sin convertir la interfaz en el motor del juego.
 
 ## Requisitos
 
@@ -47,6 +47,7 @@ go run . -seed 42 -headless 1000
 | `Tab` | Seleccionar y seguir al siguiente animal |
 | `C` | Alternar entre resumen e inspector de mente |
 | `V` | Mostrar/ocultar ruta, destino y radio de percepción del seleccionado |
+| `E` | Abrir/cerrar la vista ECO con poblaciones e historia reciente |
 | `Espacio` | Pausar o reanudar |
 | `+` / `-` | Duplicar o reducir la velocidad |
 | `1`, `2`, `3`, `4` | Velocidad ×1, ×2, ×4 o ×8 |
@@ -63,6 +64,7 @@ internal/sim/
   types.go              identidad, necesidades, cognición y acciones
   cognition.go          memoria limitada, personalidad y observación legítima
   pathfinding.go        BFS determinista y acotado sobre terreno transitable
+  genetics.go           genoma, fenotipo, herencia biparental y mutación
   world.go              terreno, entidades e índice espacial incremental
   ai.go                 percepción local, Utility AI, objetivos y navegación
   engine.go             ticks, metabolismo, vida y reproducción
@@ -120,3 +122,6 @@ go test -bench BenchmarkStep -benchmem ./internal/sim
 - Los eventos históricos sólo viven en una pequeña cola en memoria.
 
 Estas restricciones son intencionales: la siguiente iteración puede evolucionar cada sistema detrás de fronteras ya separadas y testeables.
+- Cada animal tiene seis genes: tamaño, velocidad, percepción, metabolismo, resistencia y fertilidad. El fenotipo aplica trade-offs: tamaño/percepción elevan metabolismo, velocidad eleva coste de movimiento y resistencia mejora alimento/longevidad.
+- Los hijos combinan ambos genomas, reciben una mutación pequeña acotada y registran generación y ambos IDs parentales. La personalidad se hereda débilmente, pero no es genética física.
+- Las poblaciones se muestrean cada 50 ticks en un buffer de 64 muestras; `E` muestra sparklines sin afectar la simulación.

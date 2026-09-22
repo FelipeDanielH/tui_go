@@ -22,6 +22,7 @@ type Model struct {
 	selected     int
 	inspectorTab int
 	debug        bool
+	showEco      bool
 }
 
 func New(engine *sim.Engine) Model {
@@ -66,6 +67,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "?":
 			m.showHelp = true
+		case "e":
+			m.showEco = !m.showEco
 		case " ", "space":
 			m.paused = !m.paused
 		case "+", "=":
