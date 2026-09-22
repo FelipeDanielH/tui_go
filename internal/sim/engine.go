@@ -3,6 +3,7 @@ package sim
 func (e *Engine) Step() {
 	e.Tick++
 	e.growPlants()
+	e.populationSample()
 
 	// Freeze the turn order. Newborns and new plants begin acting next tick.
 	turn := append([]int(nil), e.order...)
@@ -27,7 +28,7 @@ func (e *Engine) Step() {
 
 func (e *Engine) updateNeeds(actor *Entity) {
 	actor.Age++
-	hungerRate, thirstRate := 0.26, 0.32
+	hungerRate, thirstRate := 0.26*actor.Biology.Phenotype.Metabolism, 0.32*actor.Biology.Phenotype.Metabolism
 	if actor.Kind == Wolf {
 		hungerRate, thirstRate = 0.20, 0.29
 	}
@@ -46,10 +47,7 @@ func (e *Engine) updateNeeds(actor *Entity) {
 	if actor.Needs.Energy <= 1 {
 		actor.Needs.Health -= 0.4
 	}
-	maxAge := 1800
-	if actor.Kind == Wolf {
-		maxAge = 2400
-	}
+	maxAge := actor.Biology.Phenotype.MaxAge
 	if actor.Age > maxAge {
 		actor.Needs.Health -= 0.8
 	}
@@ -94,9 +92,9 @@ func (e *Engine) tryReproduce(parent *Entity, force bool) *Entity {
 		parent.Needs.Energy < 60 || parent.Needs.Hunger > 55 || parent.Needs.Thirst > 55 {
 		return nil
 	}
-	maturity, chance, cooldown, cap := 120, 0.018, 150, e.Config.MaxRabbits
+	maturity, chance, cooldown, cap := 120, 0.012*parent.Biology.Phenotype.Fertility, 180, e.Config.MaxRabbits
 	if parent.Kind == Wolf {
-		maturity, chance, cooldown, cap = 190, 0.006, 240, e.Config.MaxWolves
+		maturity, chance, cooldown, cap = 190, 0.004*parent.Biology.Phenotype.Fertility, 280, e.Config.MaxWolves
 	}
 	if parent.Age < maturity || e.Population(parent.Kind) >= cap || (!force && e.rng.Float64() >= chance) {
 		return nil
@@ -129,8 +127,13 @@ func (e *Engine) tryReproduce(parent *Entity, force bool) *Entity {
 		}
 		child.Age = 0
 		child.Needs = Needs{Health: 100, Hunger: 12, Thirst: 12, Energy: 72}
-		parent.Needs.Energy -= 24
-		mate.Needs.Energy = clamp(mate.Needs.Energy-10, 0, 100)
+		child.Biology = Biology{Genome: mutateGenome(inheritGenome(parent.Biology.Genome, mate.Biology.Genome, e.rng.Float64), e.rng, .035), Generation: max(parent.Biology.Generation, mate.Biology.Generation) + 1, ParentA: parent.ID, ParentB: mate.ID}
+		child.Mind.Personality = inheritPersonality(parent.Mind.Personality, mate.Mind.Personality, e.rng.Float64)
+		e.applyBiology(child)
+		parent.Needs.Energy -= 28
+		parent.Needs.Hunger = clamp(parent.Needs.Hunger+8, 0, 100)
+		mate.Needs.Energy = clamp(mate.Needs.Energy-16, 0, 100)
+		mate.Needs.Hunger = clamp(mate.Needs.Hunger+5, 0, 100)
 		parent.Cooldown, mate.Cooldown = cooldown, cooldown/2
 		e.Metrics.Births++
 		e.addEvent("%s #%d was born", child.Kind, child.ID)

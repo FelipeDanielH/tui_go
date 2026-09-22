@@ -129,6 +129,8 @@ func TestNavigationCachesAndInvalidatesPath(t *testing.T) {
 	}
 	next := rabbit.Mind.Navigation.Path[rabbit.Mind.Navigation.Next]
 	e.SetTerrain(next, Water)
+	rabbit.Traits.Speed = 2
+	rabbit.Mind.Navigation.MoveBank = 2
 	e.moveWithNavigation(rabbit, target)
 	if rabbit.Mind.Navigation.Failures == 0 {
 		t.Fatal("blocked cached route did not invalidate")

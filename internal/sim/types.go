@@ -114,6 +114,18 @@ type Traits struct {
 	Reach      int
 }
 
+// Genome is inherited biological variation. Personality remains separate.
+type Genome struct{ Size, Speed, Perception, Metabolism, Endurance, Fertility float64 }
+type Phenotype struct {
+	MaxAge                                          int
+	Metabolism, MoveCost, FoodEfficiency, Fertility float64
+}
+type Biology struct {
+	Genome                       Genome
+	Phenotype                    Phenotype
+	Generation, ParentA, ParentB int
+}
+
 // Personality provides small, seeded behavioral variation around the same
 // ecological rules. It is not inherited in this iteration.
 type Personality struct {
@@ -187,6 +199,7 @@ type Entity struct {
 	Cooldown int
 	Alive    bool
 	Mind     Cognition
+	Biology  Biology
 }
 
 func (e *Entity) Animal() bool { return e.Kind == Rabbit || e.Kind == Wolf }
@@ -208,11 +221,18 @@ type Metrics struct {
 	Hunts  int
 }
 
+type PopulationSample struct {
+	Tick                             int64
+	Plants, Rabbits, Wolves          int
+	RabbitGeneration, WolfGeneration int
+}
+
 func DefaultConfig() Config {
 	return Config{
 		Width: 96, Height: 48,
 		InitialPlants: 210, InitialRabbits: 22, InitialWolves: 3,
-		MaxPlants: 800, MaxRabbits: 90, MaxWolves: 24,
+		// Safety guards, intentionally far above normal ecological populations.
+		MaxPlants: 3000, MaxRabbits: 300, MaxWolves: 80,
 	}
 }
 

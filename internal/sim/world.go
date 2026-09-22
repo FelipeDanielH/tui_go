@@ -19,6 +19,7 @@ type Engine struct {
 	nextID    int
 	rng       *rand.Rand
 	events    []string
+	history   []PopulationSample
 	pathSeen  []int
 	pathPrev  []int
 	pathMark  int
@@ -142,11 +143,15 @@ func (e *Engine) AddEntity(k Kind, p Point) *Entity {
 		ent.Needs.Thirst = 10 + e.rng.Float64()*20
 		ent.Traits = Traits{Size: 1, Perception: 9, Speed: 2, Reach: 1}
 		ent.Mind.Personality = e.newPersonality()
+		ent.Biology = Biology{Genome: e.newGenome(k), ParentA: -1, ParentB: -1}
+		e.applyBiology(ent)
 	case Wolf:
 		ent.Needs.Hunger = 15 + e.rng.Float64()*20
 		ent.Needs.Thirst = 10 + e.rng.Float64()*20
 		ent.Traits = Traits{Size: 1.7, Perception: 12, Speed: 2, Reach: 1}
 		ent.Mind.Personality = e.newPersonality()
+		ent.Biology = Biology{Genome: e.newGenome(k), ParentA: -1, ParentB: -1}
+		e.applyBiology(ent)
 	}
 	e.nextID++
 	e.entities[ent.ID] = ent
@@ -195,6 +200,31 @@ func (e *Engine) RecentEvents() []string {
 	return result
 }
 
+func (e *Engine) PopulationHistory() []PopulationSample {
+	result := make([]PopulationSample, len(e.history))
+	copy(result, e.history)
+	return result
+}
+
+func (e *Engine) populationSample() {
+	if e.Tick%50 != 0 {
+		return
+	}
+	s := PopulationSample{Tick: e.Tick, Plants: e.Population(Plant), Rabbits: e.Population(Rabbit), Wolves: e.Population(Wolf)}
+	for _, ent := range e.entities {
+		if ent.Kind == Rabbit && ent.Biology.Generation > s.RabbitGeneration {
+			s.RabbitGeneration = ent.Biology.Generation
+		}
+		if ent.Kind == Wolf && ent.Biology.Generation > s.WolfGeneration {
+			s.WolfGeneration = ent.Biology.Generation
+		}
+	}
+	e.history = append(e.history, s)
+	if len(e.history) > 64 {
+		e.history = e.history[len(e.history)-64:]
+	}
+}
+
 func (e *Engine) addEvent(format string, args ...any) {
 	e.events = append(e.events, fmt.Sprintf(format, args...))
 	if len(e.events) > 8 {
@@ -218,6 +248,8 @@ func (e *Engine) StateDigest() string {
 		}
 		nav := ent.Mind.Navigation
 		fmt.Fprintf(&b, "n%d,%d:%d:%d|", nav.Destination.X, nav.Destination.Y, nav.Next, len(nav.Path))
+		bio := ent.Biology
+		fmt.Fprintf(&b, "b%d:%d,%d:%d:%d:%d:%d|", bio.Generation, bio.ParentA, bio.ParentB, int(bio.Genome.Size*1000), int(bio.Genome.Speed*1000), int(bio.Genome.Perception*1000), int(bio.Genome.Fertility*1000))
 		for _, point := range nav.Path {
 			fmt.Fprintf(&b, "p%d,%d|", point.X, point.Y)
 		}
